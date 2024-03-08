@@ -1,6 +1,7 @@
 package com.geeks4learning.Authenticationservice.Controller;
 
 import com.geeks4learning.Authenticationservice.Dto.Request.AuthenticationRequest;
+import com.geeks4learning.Authenticationservice.Dto.Request.RefreshTokenRequest;
 import com.geeks4learning.Authenticationservice.Dto.Request.RegisterRequest;
 import com.geeks4learning.Authenticationservice.Dto.Response.AuthenticationResponse;
 import com.geeks4learning.Authenticationservice.Dto.Response.RegistrationResponse;
@@ -40,13 +41,30 @@ public class AuthenticationController {
       }catch (Exception e){
         e.printStackTrace();
     }
-    return new ResponseObject<>(404,"Authentication failed!",null);
+    return new ResponseObject<>(401,"Authentication failed!",null);
     }
 
     @GetMapping("/validate/{token}")
-    public String validateToken(@PathVariable String token) {
-           this.authenticationServiceImp.validateToken(token);
-            return "Token is valid";
+    public ResponseEntity<String> validateToken(@PathVariable String token) {
+        try {
+            this.authenticationServiceImp.validateToken(token);
+            return new ResponseEntity<>("Token is valid",HttpStatus.OK);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return new ResponseEntity<>("Token is Invalid",HttpStatus.BAD_REQUEST);
      }
+
+    @PostMapping("/refresh")
+    public ResponseObject<AuthenticationResponse> refresh(@RequestBody RefreshTokenRequest refreshTokenRequest){
+        try {
+            return new ResponseObject<>(200, "Refreshed Successfully", this.authenticationServiceImp.refreshToken(refreshTokenRequest));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return new ResponseObject<>(401,"Failed to refresh",null);
+    }
+
+
 
 }

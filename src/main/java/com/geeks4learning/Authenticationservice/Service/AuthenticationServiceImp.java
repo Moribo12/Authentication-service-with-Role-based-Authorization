@@ -2,6 +2,7 @@ package com.geeks4learning.Authenticationservice.Service;
 
 import com.geeks4learning.Authenticationservice.Config.JwtService;
 import com.geeks4learning.Authenticationservice.Dto.Request.AuthenticationRequest;
+import com.geeks4learning.Authenticationservice.Dto.Request.RefreshTokenRequest;
 import com.geeks4learning.Authenticationservice.Dto.Request.RegisterRequest;
 import com.geeks4learning.Authenticationservice.Dto.Response.AuthenticationResponse;
 import com.geeks4learning.Authenticationservice.Dto.Response.RegistrationResponse;
@@ -18,6 +19,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,7 +34,7 @@ public class AuthenticationServiceImp implements AuthenticationService{
     @Override
     public String register(RegisterRequest request) {
 
-        if(userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if(this.userRepository.findByEmail(request.getEmail()).isPresent()) {
             log.info("User already exists!");
         }else {
             var user = User.builder()
@@ -51,16 +54,35 @@ public class AuthenticationServiceImp implements AuthenticationService{
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         this.authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(),request.getPassword()));
 
-        var user =this.userRepository.findByEmail(request.getEmail()).orElseThrow();
+        var user = this.userRepository.findByEmail(request.getEmail()).orElseThrow();
 
-        var jwtToken =this.jwtService.generateToken(user);
+        var jwtToken = this.jwtService.generateToken(user);
+        var refreshToken =this.jwtService.generateRefreshToken(new HashMap<>(),user);
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 
     public void validateToken(String token) {
-        jwtService.validateToken(token);
+        this.jwtService.validateToken(token);
+    }
+
+    public AuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
+
+        String userEmail = this.jwtService.extractUsername(refreshTokenRequest.getToken());
+        User user = this.userRepository.findByEmail(userEmail).orElseThrow();
+
+        if(this.jwtService.isTokenValid(refreshTokenRequest.getToken(), user)){
+            var jwt = this.jwtService.generateToken(user);
+
+            return AuthenticationResponse.builder()
+                    .token(jwt)
+                    .refreshToken(refreshTokenRequest.getToken())
+                    .build();
+    }
+        return null;
     }
 
 }
